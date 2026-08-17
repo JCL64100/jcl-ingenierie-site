@@ -98,12 +98,12 @@ button{ font-family:inherit; cursor:pointer; }
 .projects-hero .fort-mark{ right:-50px; bottom:-90px; width:360px; height:360px; }
 
 .hero-contacts{
-  position:absolute; right:26px; top:108px; z-index:2;
+  position:absolute; right:230px; top:190px; z-index:2;
+  transform:translate(50%, -50%);
   display:flex; flex-direction:column; gap:16px;
   text-align:left;
   padding:22px 26px;
   border:1px solid var(--line-dim);
-  background:rgba(17,13,9,0.6);
   max-width:230px;
 }
 .hero-contacts::before, .hero-contacts::after{
@@ -557,11 +557,13 @@ footer.site-footer{
 
 /* ---------- responsive ---------- */
 
-@media (max-width: 1240px){
+@media (max-width: 1320px){
   .hero-contacts{
     position:static; margin-top:40px; text-align:left;
     flex-direction:row; flex-wrap:wrap; gap:24px 40px;
-    padding:0; border:none; background:none; max-width:none;
+    padding:0 28px; border:none; background:none; max-width:1180px;
+    transform:none; margin-left:auto; margin-right:auto;
+    box-sizing:border-box;
   }
   .hero-contacts::before, .hero-contacts::after{ display:none; }
   .hc-item{ text-align:left; }
@@ -798,6 +800,7 @@ body.g-admin-mode .g-item:not(.g-selected){ opacity:0.85; }
 .g-modal{
   background:var(--white); border:1px solid var(--paper-2); padding:30px 26px;
   width:100%; max-width:360px; text-align:center; border-radius:var(--radius);
+  max-height:88vh; overflow-y:auto;
 }
 .g-modal.g-wide{ max-width:440px; }
 .g-modal h2{ font-size:19px; margin-bottom:8px; color:var(--text); }
@@ -1468,6 +1471,10 @@ function checkUploadPwd() {
 }
 
 function openUpload(targetFolder, meta) {
+  if (typeof cloudinary === 'undefined') {
+    showToast("Le module d'envoi Cloudinary n'a pas pu se charger — vérifie ta connexion, désactive un éventuel bloqueur de publicités, ou ouvre le site via son adresse en ligne plutôt qu'en double-cliquant le fichier.");
+    return;
+  }
   let newItems = 0;
   const widget = cloudinary.createUploadWidget({
     cloudName: CONFIG.cloudName, uploadPreset: CONFIG.uploadPreset,
