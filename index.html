@@ -204,7 +204,16 @@ button{ font-family:inherit; cursor:pointer; }
   overflow:hidden;
   padding:96px 0 70px;
 }
-.hero .blueprint-grid{ position:absolute; inset:0; opacity:0.55; }
+.hero-bg{ position:absolute; inset:0; z-index:0; display:flex; }
+.hero-bg-img{
+  flex:1; background-size:cover; background-position:center;
+  filter:grayscale(30%) brightness(0.5) contrast(1.05);
+}
+.hero-bg::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(30,24,17,0.72) 0%, rgba(30,24,17,0.88) 100%);
+}
+.hero .blueprint-grid{ position:absolute; inset:0; opacity:0.55; z-index:1; }
 .hero::after{
   content:"";
   position:absolute; inset:0;
@@ -425,6 +434,39 @@ section{ padding:88px 0; }
 .legal-box dt{ font-family:var(--mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
 .legal-box dd{ margin:4px 0 0; font-size:13.5px; color:var(--paper); }
 
+/* ---------- formulaire de contact + visuel atelier ---------- */
+
+.contact-extra{
+  margin-top:56px; padding-top:44px; border-top:1px solid rgba(180,133,74,0.18);
+  display:grid; grid-template-columns:1fr 1fr; gap:60px;
+}
+.contact-form{ display:flex; flex-direction:column; gap:16px; }
+.contact-form .coord-stamp{ margin-bottom:4px; }
+.cf-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.cf-field label{
+  font-family:var(--mono); font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--line); display:block; margin-bottom:7px;
+}
+.cf-field input, .cf-field textarea{
+  width:100%; padding:12px 14px; background:transparent; border:1px solid var(--line-dim);
+  color:var(--paper); font-family:var(--body); font-size:14.5px; border-radius:var(--radius);
+  outline:none; box-sizing:border-box;
+}
+.cf-field textarea{ resize:vertical; }
+.cf-field input:focus, .cf-field textarea:focus{ border-color:var(--line); }
+.cf-field input::placeholder, .cf-field textarea::placeholder{ color:var(--muted); }
+
+.contact-visual{ display:flex; flex-direction:column; gap:28px; }
+.contact-visual .coord-stamp{ display:block; margin-bottom:10px; }
+.cv-photo{ width:100%; height:200px; object-fit:cover; object-position:top center; border:1px solid var(--line-dim); display:block; }
+.cv-map-wrap{ border:1px solid var(--line-dim); overflow:hidden; height:200px; }
+.cv-map{ width:100%; height:100%; border:0; display:block; }
+
+@media (max-width: 900px){
+  .contact-extra{ grid-template-columns:1fr; gap:40px; }
+  .cf-row{ grid-template-columns:1fr; }
+}
+
 /* ---------- footer ---------- */
 
 footer.site-footer{
@@ -636,6 +678,10 @@ footer.site-footer{
 
 <!-- HERO -->
 <section class="hero">
+  <div class="hero-bg">
+    <div class="hero-bg-img" style="background-image:url('assets/img/hero-ossau.jpg')"></div>
+    <div class="hero-bg-img" style="background-image:url('assets/img/hero-vague.jpg')"></div>
+  </div>
   <div class="blueprint-grid"></div>
   <svg class="fort-mark" viewBox="0 0 400 400" aria-hidden="true">
     <polygon points="100,140 70,70 140,100 260,100 330,70 300,140 300,260 330,330 260,300 140,300 70,330 100,260" fill="none" style="stroke:var(--line)" stroke-width="2"/>
@@ -644,7 +690,7 @@ footer.site-footer{
     <div class="hero-frame">
       <span class="hero-kicker">Assistance à maîtrise d'ouvrage &amp; maîtrise d'œuvre</span>
       <h1>Piloter vos travaux comme on lève un plan&nbsp;: <em>avec précision, du premier repère à la réception.</em></h1>
-      <p class="hero-lede">JCL Ingénierie coordonne vos projets de construction et de rénovation sur le Pays Basque — programmation, conception, consultation des entreprises et direction de l'exécution, sous un seul interlocuteur.</p>
+      <p class="hero-lede">Faisabilité, programmation, assistance à maîtrise d'ouvrage, maîtrise d'œuvre — conception et réalisation — et expertises&nbsp;: JCL Ingénierie est l'interlocuteur unique qui regroupe ces compétences, et sait faire appel, selon les besoins du projet, à des intervenants techniques complémentaires en soutien de son intervention.</p>
       <div class="hero-actions">
         <a href="projets.html" class="btn btn-primary">Voir les projets →</a>
         <a href="#contact" class="btn btn-ghost">Prendre contact</a>
@@ -653,8 +699,8 @@ footer.site-footer{
     <div class="hero-meta">
       <div><div class="k">Basé à</div><div class="v">Bayonne, 64100</div></div>
       <div><div class="k">Activité</div><div class="v">Ingénierie, études techniques</div></div>
-      <div><div class="k">Statut</div><div class="v">SAS — depuis 2018</div></div>
-      <div><div class="k">Rayon d'action</div><div class="v">Pays Basque &amp; Landes</div></div>
+      <div><div class="k">Statut</div><div class="v">SASU — depuis mai 2018</div></div>
+      <div><div class="k">Rayon d'action</div><div class="v">Pyrénées-Atlantiques &amp; Landes</div></div>
     </div>
   </div>
   <div class="hero-contacts">
@@ -668,7 +714,7 @@ footer.site-footer{
     </div>
     <div class="hc-item">
       <span class="hc-k">Adresse</span>
-      <span class="hc-v"><a href="https://www.google.com/maps/search/?api=1&query=11+rue+Tour+de+Sault+64100+Bayonne" target="_blank" rel="noopener">11 rue Tour de Sault<br>64100 Bayonne</a></span>
+      <span class="hc-v"><a href="https://www.google.com/maps/search/?api=1&query=11+rue+Tour+de+Sault+64100+Bayonne" target="_blank" rel="noopener">Atelier 11<br>11 rue Tour de Sault<br>64100 Bayonne</a></span>
     </div>
   </div>
 </section>
@@ -683,17 +729,21 @@ footer.site-footer{
     <div class="about-grid">
       <div class="about-copy">
         <p><strong>JCL Ingénierie</strong> est dirigée par <strong>Jean-Christophe Lucbernet</strong>, ingénieur de formation en géodésie et métrologie terrestre. Cette culture de la mesure et du relevé de précision se retrouve dans la façon dont chaque projet est cadré, chiffré et suivi.</p>
-        <p>Sur un chantier, le rôle de JCL Ingénierie est avant tout celui d'un <strong>facilitateur</strong>&nbsp;: mettre le projet en place, en assurer la gestion au quotidien, et rester le référent technique qui fait le lien entre le maître d'ouvrage, les entreprises et les différents corps d'état — un véritable chef d'orchestre sur le projet.</p>
+        <p>De l'étude de site à la réalisation du chantier&nbsp;: une gestion engagée et rigoureuse du projet, une sensibilité et une humilité dans la gestion quotidienne pour en retirer la quintessence. Et, enfin, mettre l'homme au centre du projet, dans sa conception comme dans sa réalisation, pour une qualité optimale.</p>
+        <p>Dans le respect des objectifs de vie, environnementaux et financiers, au niveau des délais et en phase avec l'évolution de notre société et de notre planète.</p>
         <p>Qu'il s'agisse de la réhabilitation d'une villa, d'un équipement sportif ou d'un bâtiment public, l'approche reste la même&nbsp;: comprendre l'existant, cadrer le besoin avec précision, puis tenir le cap jusqu'à la livraison.</p>
+        <p>Fort de son passé en entreprises — MAS BTP, SPIE Batignolles — en tant qu'ingénieur de travaux, puis au sein du groupe SCIC Développement/Icade et de la SEM du Pays de l'Adour (la SEPA) en tant que directeur de projet sur des missions d'assistance à maîtrise d'ouvrage, Jean-Christophe Lucbernet a su acquérir une solide expérience et une réelle expertise dans la gestion de projets conséquents et complexes.</p>
         <p>Une rigueur qui doit beaucoup à Bayonne elle-même&nbsp;: une ville que Vauban a fortifiée au cordeau en 1680, et dont le port sur l'Adour tient tout entier au tracé d'un ingénieur, Louis de Foix, qui a détourné le fleuve jusqu'à son embouchure actuelle.</p>
+        <p>JCL Ingénierie est installée au sein de l'<strong>Atelier 11</strong> à Bayonne. L'atelier regroupe deux architectes et deux ingénieurs/maîtres d'œuvre indépendants, qui peuvent travailler en collaboration et en coopération sur des marchés publics ou privés — un mode de fonctionnement qui permet d'aborder la conception sous la forme d'une véritable collaboration.</p>
       </div>
       <div class="role-card">
         <span class="coord-stamp">// CE QUE COUVRE LA MISSION</span>
         <ul>
           <li><span class="tag">01</span> Cadrage du besoin et du budget avec le maître d'ouvrage</li>
-          <li><span class="tag">02</span> Interface technique entre client, architectes et entreprises</li>
-          <li><span class="tag">03</span> Suivi de chantier et gestion des délais</li>
-          <li><span class="tag">04</span> Contrôle qualité et conformité à la réception</li>
+          <li><span class="tag">02</span> Conception du projet dans le respect d'objectifs définis, pour apporter une réponse spécifique et adaptée</li>
+          <li><span class="tag">03</span> Interface technique entre client, architectes et entreprises</li>
+          <li><span class="tag">04</span> Suivi de chantier, gestion des délais et gestion financière</li>
+          <li><span class="tag">05</span> Contrôle qualité et conformité à la réception</li>
         </ul>
       </div>
     </div>
@@ -714,12 +764,12 @@ footer.site-footer{
       <div class="domain-card">
         <span class="num">MOE</span>
         <h3>Maîtrise d'œuvre</h3>
-        <p>Conception technique, coordination des corps d'état et suivi de la bonne exécution des travaux.</p>
+        <p>Conception technique, coordination des corps d'état et suivi de la bonne exécution des travaux, jusqu'à la réception.</p>
       </div>
       <div class="domain-card">
         <span class="num">AMOA</span>
         <h3>Assistance à maîtrise d'ouvrage</h3>
-        <p>Représentation et conseil auprès du client tout au long du projet, de l'idée initiale à la livraison.</p>
+        <p>Représentation et conseil auprès du client tout au long du projet, de l'idée initiale à la livraison. Agit pour le compte et pour défendre les intérêts du maître d'ouvrage.</p>
       </div>
       <div class="domain-card">
         <span class="num">EXE</span>
@@ -729,7 +779,7 @@ footer.site-footer{
       <div class="domain-card">
         <span class="num">PGM</span>
         <h3>Programmation</h3>
-        <p>Définition des besoins, des contraintes et du cahier des charges avant le lancement d'un projet.</p>
+        <p>Définition des besoins, des contraintes et du cahier des charges avant le lancement d'un projet, sur toutes typologies&nbsp;: maisons individuelles, copropriétés, hospitalier, médico-social, tertiaire et équipements.</p>
       </div>
       <div class="domain-card">
         <span class="num">EXP</span>
@@ -765,7 +815,7 @@ footer.site-footer{
         <div class="process-num">02 — Conception</div>
         <div class="process-body">
           <h3>Dessiner la solution</h3>
-          <p>Traduction du programme en solutions techniques, en lien avec les architectes et bureaux d'études.</p>
+          <p>Traduction du programme en solutions techniques et architecturales, en lien avec les architectes et bureaux d'études.</p>
         </div>
       </div>
       <div class="process-item">
@@ -797,14 +847,15 @@ footer.site-footer{
 <section id="references">
   <div class="wrap">
     <div class="section-head">
-      <span class="eyebrow">Références</span>
-      <h2>Des projets résidentiels aux équipements sportifs.</h2>
+      <span class="eyebrow">Références des projets</span>
+      <h2>Des projets privés et en marchés publics.</h2>
+      <p>Du résidentiel aux équipements sportifs, en passant par les bâtiments publics.</p>
     </div>
     <div class="refs-strip">
       <div class="ref-card">
-        <span class="coord-stamp">Résidentiel — Chiberta</span>
-        <h3>Réhabilitation d'une villa</h3>
-        <p>Plus de 700 000 € de travaux menés en 6 mois&nbsp;: isolation, couverture et toiture aluminium, solaire thermique, ventilation, chauffage, électricité, plâtrerie et peinture.</p>
+        <span class="coord-stamp">Résidentiel — Chiberta, Anglet</span>
+        <h3>Réhabilitation d'une maison, en deux tranches</h3>
+        <p>Tranche 1&nbsp;: façades et murs en aluminium, reprise complète de la VMC, de la climatisation et de la chaufferie (580 000 € TTC, réceptionnée en juin 2025). Tranche 2&nbsp;: terrasse et salon, démolition-reconstruction de la zone dégradée et embellissement des extérieurs (1 400 000 € TTC estimés, réception en juillet 2026).</p>
       </div>
       <div class="ref-card">
         <span class="coord-stamp">Équipement sportif</span>
@@ -860,19 +911,57 @@ footer.site-footer{
       <ul class="contact-list">
         <li><span class="k">Téléphone</span><span class="v"><a href="tel:+33674779386">06 74 77 93 86</a></span></li>
         <li><span class="k">Email</span><span class="v"><a href="mailto:jclingenierie@orange.fr">jclingenierie@orange.fr</a></span></li>
-        <li><span class="k">Adresse</span><span class="v">11 rue Tour de Sault, 64100 Bayonne</span></li>
-        <li><span class="k">Zone</span><span class="v">Pays Basque, Landes et alentours</span></li>
+        <li><span class="k">Adresse</span><span class="v">Atelier 11 — 11 rue Tour de Sault, 64100 Bayonne</span></li>
+        <li><span class="k">Zone</span><span class="v">Pyrénées-Atlantiques, Landes et alentours</span></li>
       </ul>
       <div class="legal-box">
         <span class="coord-stamp">Fiche entreprise</span>
         <dl>
           <div><dt>Raison sociale</dt><dd>JCL Ingénierie</dd></div>
-          <div><dt>Forme juridique</dt><dd>SAS</dd></div>
+          <div><dt>Forme juridique</dt><dd>SASU</dd></div>
           <div><dt>SIREN</dt><dd>839 646 114</dd></div>
           <div><dt>N° TVA</dt><dd>FR62839646114</dd></div>
           <div><dt>Activité (NAF)</dt><dd>7112B — Ingénierie, études techniques</dd></div>
           <div><dt>Création</dt><dd>18 mai 2018</dd></div>
         </dl>
+      </div>
+    </div>
+
+    <div class="contact-extra">
+      <form class="contact-form" onsubmit="return sendContactMail(event)">
+        <span class="coord-stamp">// Décrire votre projet</span>
+        <div class="cf-row">
+          <div class="cf-field">
+            <label for="cf-nom">Nom</label>
+            <input type="text" id="cf-nom" name="nom" required>
+          </div>
+          <div class="cf-field">
+            <label for="cf-prenom">Prénom</label>
+            <input type="text" id="cf-prenom" name="prenom" required>
+          </div>
+        </div>
+        <div class="cf-field">
+          <label for="cf-tel">Téléphone</label>
+          <input type="tel" id="cf-tel" name="telephone">
+        </div>
+        <div class="cf-field">
+          <label for="cf-desc">Description du projet</label>
+          <textarea id="cf-desc" name="description" rows="4" required placeholder="Type de projet, localisation, échéance envisagée…"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="align-self:flex-start;">Envoyer →</button>
+      </form>
+
+      <div class="contact-visual">
+        <div>
+          <span class="coord-stamp">Atelier 11 — Bayonne</span>
+          <img src="assets/img/atelier11.jpg" alt="Façade de l'Atelier 11, siège de JCL Ingénierie à Bayonne" class="cv-photo">
+        </div>
+        <div>
+          <span class="coord-stamp">Nous situer</span>
+          <div class="cv-map-wrap">
+            <iframe class="cv-map" src="https://www.google.com/maps?q=11+rue+Tour+de+Sault,+64100+Bayonne&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Localisation de JCL Ingénierie, 11 rue Tour de Sault, Bayonne"></iframe>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -881,12 +970,33 @@ footer.site-footer{
 <footer class="site-footer">
   <div class="wrap footer-row">
     <span>© 2026 JCL Ingénierie — SIREN 839 646 114</span>
-    <span>11 rue Tour de Sault, 64100 Bayonne</span>
+    <span>Atelier 11 — 11 rue Tour de Sault, 64100 Bayonne</span>
   </div>
 </footer>
 
 <script>
 // JCL Ingénierie — comportements partagés
+
+function sendContactMail(e) {
+  e.preventDefault();
+  const nom = document.getElementById('cf-nom').value.trim();
+  const prenom = document.getElementById('cf-prenom').value.trim();
+  const tel = document.getElementById('cf-tel').value.trim();
+  const desc = document.getElementById('cf-desc').value.trim();
+  const subject = encodeURIComponent(`Demande de contact — ${prenom} ${nom}`.trim());
+  const bodyLines = [
+    `Nom : ${nom}`,
+    `Prénom : ${prenom}`,
+    tel ? `Téléphone : ${tel}` : null,
+    '',
+    'Description du projet :',
+    desc,
+  ].filter(l => l !== null);
+  const body = encodeURIComponent(bodyLines.join('\n'));
+  window.location.href = `mailto:jclingenierie@orange.fr?subject=${subject}&body=${body}`;
+  return false;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
   /* ---- nav mobile ---- */
