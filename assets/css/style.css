@@ -86,12 +86,12 @@ button{ font-family:inherit; cursor:pointer; }
 .projects-hero .fort-mark{ right:-50px; bottom:-90px; width:360px; height:360px; }
 
 .hero-contacts{
-  position:absolute; right:26px; top:108px; z-index:2;
+  position:absolute; right:230px; top:190px; z-index:2;
+  transform:translate(50%, -50%);
   display:flex; flex-direction:column; gap:16px;
   text-align:left;
   padding:22px 26px;
   border:1px solid var(--line-dim);
-  background:rgba(17,13,9,0.6);
   max-width:230px;
 }
 .hero-contacts::before, .hero-contacts::after{
@@ -192,7 +192,16 @@ button{ font-family:inherit; cursor:pointer; }
   overflow:hidden;
   padding:96px 0 70px;
 }
-.hero .blueprint-grid{ position:absolute; inset:0; opacity:0.55; }
+.hero-bg{ position:absolute; inset:0; z-index:0; display:flex; }
+.hero-bg-img{
+  flex:1; background-size:cover; background-position:center;
+  filter:grayscale(30%) brightness(0.5) contrast(1.05);
+}
+.hero-bg::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(30,24,17,0.72) 0%, rgba(30,24,17,0.88) 100%);
+}
+.hero .blueprint-grid{ position:absolute; inset:0; opacity:0.55; z-index:1; }
 .hero::after{
   content:"";
   position:absolute; inset:0;
@@ -413,6 +422,39 @@ section{ padding:88px 0; }
 .legal-box dt{ font-family:var(--mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
 .legal-box dd{ margin:4px 0 0; font-size:13.5px; color:var(--paper); }
 
+/* ---------- formulaire de contact + visuel atelier ---------- */
+
+.contact-extra{
+  margin-top:56px; padding-top:44px; border-top:1px solid rgba(180,133,74,0.18);
+  display:grid; grid-template-columns:1fr 1fr; gap:60px;
+}
+.contact-form{ display:flex; flex-direction:column; gap:16px; }
+.contact-form .coord-stamp{ margin-bottom:4px; }
+.cf-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.cf-field label{
+  font-family:var(--mono); font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--line); display:block; margin-bottom:7px;
+}
+.cf-field input, .cf-field textarea{
+  width:100%; padding:12px 14px; background:transparent; border:1px solid var(--line-dim);
+  color:var(--paper); font-family:var(--body); font-size:14.5px; border-radius:var(--radius);
+  outline:none; box-sizing:border-box;
+}
+.cf-field textarea{ resize:vertical; }
+.cf-field input:focus, .cf-field textarea:focus{ border-color:var(--line); }
+.cf-field input::placeholder, .cf-field textarea::placeholder{ color:var(--muted); }
+
+.contact-visual{ display:flex; flex-direction:column; gap:28px; }
+.contact-visual .coord-stamp{ display:block; margin-bottom:10px; }
+.cv-photo{ width:100%; aspect-ratio:3/4; height:auto; object-fit:cover; object-position:top center; border:1px solid var(--line-dim); display:block; }
+.cv-map-wrap{ border:1px solid var(--line-dim); overflow:hidden; height:200px; }
+.cv-map{ width:100%; height:100%; border:0; display:block; }
+
+@media (max-width: 900px){
+  .contact-extra{ grid-template-columns:1fr; gap:40px; }
+  .cf-row{ grid-template-columns:1fr; }
+}
+
 /* ---------- footer ---------- */
 
 footer.site-footer{
@@ -545,11 +587,13 @@ footer.site-footer{
 
 /* ---------- responsive ---------- */
 
-@media (max-width: 1240px){
+@media (max-width: 1320px){
   .hero-contacts{
     position:static; margin-top:40px; text-align:left;
     flex-direction:row; flex-wrap:wrap; gap:24px 40px;
-    padding:0; border:none; background:none; max-width:none;
+    padding:0 28px; border:none; background:none; max-width:1180px;
+    transform:none; margin-left:auto; margin-right:auto;
+    box-sizing:border-box;
   }
   .hero-contacts::before, .hero-contacts::after{ display:none; }
   .hc-item{ text-align:left; }

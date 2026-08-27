@@ -1,4 +1,25 @@
 // JCL Ingénierie — comportements partagés
+
+function sendContactMail(e) {
+  e.preventDefault();
+  const nom = document.getElementById('cf-nom').value.trim();
+  const prenom = document.getElementById('cf-prenom').value.trim();
+  const tel = document.getElementById('cf-tel').value.trim();
+  const desc = document.getElementById('cf-desc').value.trim();
+  const subject = encodeURIComponent(`Demande de contact — ${prenom} ${nom}`.trim());
+  const bodyLines = [
+    `Nom : ${nom}`,
+    `Prénom : ${prenom}`,
+    tel ? `Téléphone : ${tel}` : null,
+    '',
+    'Description du projet :',
+    desc,
+  ].filter(l => l !== null);
+  const body = encodeURIComponent(bodyLines.join('\n'));
+  window.location.href = `mailto:jclingenierie@orange.fr?subject=${subject}&body=${body}`;
+  return false;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
   /* ---- nav mobile ---- */

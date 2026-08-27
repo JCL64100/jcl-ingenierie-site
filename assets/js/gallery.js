@@ -32,6 +32,8 @@ const isConfigured = () =>
 let allMedia   = [];
 let folders    = [];
 let filtered   = [];
+let detailItems = [];   // photos of the currently open project (detail view)
+let curProject = null;  // clé du projet ouvert, ou null = vue "tuiles"
 let selected   = new Set();
 let curIndex   = 0;
 let adminMode  = false;
@@ -131,6 +133,7 @@ function renderFolders() {
 
 function selectFolder(name, el) {
   curFolder = name;
+  curProject = null;
   document.querySelectorAll('.g-folder-chip').forEach(c => c.classList.remove('is-active'));
   el.classList.add('is-active');
   deselectAll();
@@ -140,6 +143,7 @@ function selectFolder(name, el) {
 /* ── FILTERS ── */
 function setFilter(f, btn) {
   curFilter = f;
+  curProject = null;
   document.querySelectorAll('.g-filter-btn').forEach(b => b.classList.remove('is-active'));
   btn.classList.add('is-active');
   deselectAll();
@@ -155,13 +159,38 @@ function applyFilters() {
   render();
 }
 
-/* ── RENDER GRID ── */
+/* ── RENDER : VUE "PROJETS" (tuiles) + VUE "DÉTAIL" (photos d'un projet) ── */
 function truncate(str, n) {
   if (!str) return '';
   return str.length > n ? str.slice(0, n - 1).trim() + '…' : str;
 }
 
+function projectKey(item) {
+  return (item.projet && item.projet.trim()) ? item.projet.trim() : ('__single__' + item._id);
+}
+
+function groupByProject(list) {
+  const groups = {};
+  const order = [];
+  list.forEach(item => {
+    const key = projectKey(item);
+    if (!groups[key]) { groups[key] = []; order.push(key); }
+    groups[key].push(item);
+  });
+  return order.map(key => ({ key, items: groups[key] }));
+}
+
+let projectGroups = []; // recalculé à chaque rendu de la vue tuiles
+
 function render() {
+  if (curProject !== null) {
+    renderProjectDetail();
+  } else {
+    renderProjectTiles();
+  }
+}
+
+function renderProjectTiles() {
   const grid = document.getElementById('gallery');
   if (!filtered.length) {
     grid.innerHTML = `<div class="g-empty">
@@ -172,10 +201,72 @@ function render() {
     return;
   }
   const showFolderTag = curFolder === '__all__';
+  projectGroups = groupByProject(filtered);
 
-  grid.innerHTML = filtered.map((item, i) => {
+  grid.innerHTML = projectGroups.map((g, i) => {
+    const cover = g.items[0];
+    const title = cover.projet || 'Sans titre';
+    const count = g.items.length;
+    const folderTag = cover.folder && showFolderTag ? `<span class="g-item-folder-tag g-visible">${cover.folder}</span>` : '';
+
+    const media = cover.type === 'video'
+      ? (() => {
+          const thumb = cover.url.replace('/video/upload/', '/video/upload/so_0,w_600,h_450,c_fill/').replace(/\.[^./?]+(\?.*)?$/, '.jpg');
+          return `<img src="${thumb}" loading="lazy" alt="Vidéo" onerror="this.style.display='none'">
+            <div class="g-video-badge">Vidéo</div>`;
+        })()
+      : `<img src="${cover.url.replace('/image/upload/', '/image/upload/w_600,h_450,c_fill/')}" loading="lazy" alt="${title}">`;
+
+    const metaLine = [cover.annee, cover.lieu].filter(Boolean).join(' · ');
+
+    return `<div class="g-project-tile" onclick="openProject(${i})">
+      <div class="g-item-media">
+        ${media}
+        ${count > 1 ? `<span class="g-project-count">${count} photos</span>` : ''}
+        ${folderTag}
+      </div>
+      <div class="g-item-caption">
+        <div class="g-cap-title">${title}</div>
+        ${metaLine ? `<div class="g-cap-meta">${metaLine}</div>` : ''}
+        ${cover.descriptifLong ? `<div class="g-cap-desc">${truncate(cover.descriptifLong, 220)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openProject(i) {
+  const g = projectGroups[i];
+  if (!g) return;
+  curProject = g.key;
+  deselectAll();
+  render();
+  document.getElementById('gallery').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeProject() {
+  curProject = null;
+  deselectAll();
+  render();
+}
+
+function renderProjectDetail() {
+  const grid = document.getElementById('gallery');
+  detailItems = filtered.filter(item => projectKey(item) === curProject);
+
+  if (!detailItems.length) {
+    // Le projet a été vidé (ex: suppression de la dernière photo) — retour aux tuiles.
+    closeProject();
+    return;
+  }
+
+  const title = detailItems[0].projet || 'Sans titre';
+  const header = `<div class="g-detail-header">
+      <button class="g-back-btn" onclick="closeProject()">← Tous les projets</button>
+      <h3 class="g-detail-title">${title}</h3>
+    </div>`;
+
+  const items = detailItems.map((item, i) => {
     const sel = selected.has(item.url);
-    const folderTag = item.folder && showFolderTag ? `<span class="g-item-folder-tag g-visible">${item.folder}</span>` : '';
     const checkMk = sel ? '✓' : '';
     const selCls = sel ? ' g-selected' : '';
 
@@ -187,27 +278,20 @@ function render() {
         })()
       : `<img src="${item.url.replace('/image/upload/', '/image/upload/w_500,h_500,c_fill/')}" loading="lazy" alt="${item.projet || 'Photo de chantier'}">`;
 
-    const metaLine = [item.annee, item.lieu].filter(Boolean).join(' · ');
-    const caption = (item.projet || metaLine || item.descriptifCourt) ? `
-      <div class="g-item-caption">
-        ${item.projet ? `<div class="g-cap-title">${item.projet}</div>` : ''}
-        ${metaLine ? `<div class="g-cap-meta">${metaLine}</div>` : ''}
-        ${item.descriptifCourt ? `<div class="g-cap-desc">${truncate(item.descriptifCourt, 110)}</div>` : ''}
-      </div>` : '';
-
     return `<div class="g-item${selCls}" onclick="handleItemClick(${i})">
       <div class="g-item-media">
         ${media}
         <div class="g-item-check">${checkMk}</div>
-        ${folderTag}
       </div>
-      ${caption}
+      ${item.descriptifCourt ? `<div class="g-item-caption"><div class="g-cap-desc">${truncate(item.descriptifCourt, 140)}</div></div>` : ''}
     </div>`;
   }).join('');
+
+  grid.innerHTML = header + items;
 }
 
 function handleItemClick(i) {
-  if (adminMode) toggleSelect(filtered[i].url);
+  if (adminMode) toggleSelect(detailItems[i].url);
   else openLb(i);
 }
 
@@ -217,7 +301,7 @@ function toggleSelect(url) {
   updateToolbar();
   render();
 }
-function selectAll() { filtered.forEach(m => selected.add(m.url)); updateToolbar(); render(); }
+function selectAll() { detailItems.forEach(m => selected.add(m.url)); updateToolbar(); render(); }
 function deselectAll() { selected.clear(); updateToolbar(); render(); }
 function updateToolbar() {
   const n = selected.size;
@@ -265,13 +349,97 @@ function flagError(fieldId, errorId) {
   f.focus();
 }
 
+/* ── MODÈLES DE PROJET (pré-remplissage rapide) ──
+   Chaque modèle correspond à un projet déjà cadré : sélectionner son nom
+   dans le formulaire d'ajout remplit automatiquement tous les champs.
+   Ajouter/modifier des entrées ici pour enrichir la liste au fil du temps. */
+const PROJECT_TEMPLATES = [
+  {
+    projet: 'Villa Gardenia', annee: '2022', lieu: 'Biarritz', budget: '1 450 000 € TTC', duree: '14 mois',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: "Réhabilitation d'une villa de 1883, livraison fin juin 2022.",
+    descriptifLong: "Réhabilitation d'une villa de 1883 avec démolition de tous les planchers, dépose de toute la couverture et de la charpente, création d'un garage, d'une piscine et d'un sauna en sous-sol, mise en place d'un ascenseur en verre. 16 entreprises sont intervenues sur le projet. Délai de réalisation : 14 mois — livraison fin juin 2022. Montant des travaux : 1 450 000 € TTC. Mission : maîtrise d'œuvre, conception et réalisation, et OPC.",
+  },
+  {
+    projet: 'Chiberta — Tranche 1 : réhabilitation du bâtiment', annee: '2025', lieu: 'Anglet', budget: '580 000 € TTC', duree: '',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: 'Façades et couverture en aluminium, VMC, climatisation et chaufferie refaites.',
+    descriptifLong: "Le projet porte sur la réhabilitation d'une maison située à Chiberta, à Anglet, réalisée en deux tranches de travaux, avec pour objectif de rénover le bâtiment, d'améliorer ses équipements techniques et de valoriser ses espaces intérieurs et extérieurs. Tranche 1 — Réhabilitation du bâtiment : les travaux ont notamment compris la réhabilitation des façades et de la couverture en aluminium, ainsi que la reprise complète de la VMC, du réseau de climatisation et de la chaufferie. Chantier réceptionné en juin 2025. Montant des travaux : 580 000 € TTC.",
+  },
+  {
+    projet: 'Chiberta — Tranche 2 : terrasse et extérieurs', annee: '2026', lieu: 'Anglet', budget: '1 400 000 € TTC (estimatif)', duree: '',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: 'Réhabilitation terrasse et salon, démolition-reconstruction de la zone dégradée, embellissement des extérieurs.',
+    descriptifLong: "Seconde tranche du projet de réhabilitation de la maison de Chiberta à Anglet : réhabilitation de la terrasse et du salon, avec démolition-reconstruction de la zone du bâtiment dégradée, et embellissement des extérieurs. Estimatif des travaux : 1 400 000 € TTC. Chantier réceptionné en juillet 2026.",
+  },
+  {
+    projet: 'Magasin Grace & Mila', annee: '2025', lieu: "Bayonne (13 rue d'Espagne)", budget: '150 000 € TTC', duree: '',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: 'Réhabilitation complète suite à sinistre, maîtrise d\'œuvre pour le compte des assureurs.',
+    descriptifLong: "Réhabilitation complète du magasin Grace & Mila à Bayonne (13 rue d'Espagne), suite à une injection de résine dans les réseaux EU et EP — sinistre important. Mission de maîtrise d'œuvre menée pour le compte des assureurs. Montant des travaux : 150 000 € TTC. Chantier réceptionné en décembre 2025.",
+  },
+  {
+    projet: 'Magasin de bijoux et de pierres', annee: '2026', lieu: 'Bayonne', budget: '90 000 € TTC', duree: '3 mois',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: 'Reprise complète intérieure et façade, création d\'un magasin de vente de bijoux et de pierres.',
+    descriptifLong: "Réhabilitation complète d'un magasin sur Bayonne avec reprise complète intérieure et reprise de façade, pour la création d'un magasin de vente de bijoux et de pierres. Coût du projet : 90 000 € TTC. Délai de réalisation de 3 mois. Réception en juin 2026.",
+  },
+  {
+    projet: "Réhabilitation d'un appartement au 5ᵉ étage", annee: '2024', lieu: 'Biarritz (rue de la Poste, 64500)', budget: '380 000 € TTC', duree: '6 mois',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: 'Démolition et reconstruction intérieure complète, livraison début juillet 2024.',
+    descriptifLong: "Réhabilitation d'un appartement au 5ᵉ étage d'une résidence, rue de la Poste à Biarritz (64500). Démolition complète intérieure et reconstruction intérieure (lots plâtrerie, isolation, menuiseries extérieures et intérieures, parquets, électricité, plomberie, climatisation, peinture, cuisiniste et aménagement intérieur). Délai de réalisation : 6 mois — livraison début juillet 2024. Montant des travaux : 380 000 € TTC. Mission : maîtrise d'œuvre, conception et réalisation, et OPC.",
+  },
+  {
+    projet: 'Appartement Le Carlton', annee: '2026', lieu: 'Biarritz', budget: '330 000 € TTC', duree: '5 mois',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: 'Réhabilitation complète d\'un appartement de 105 m², livraison début février 2026.',
+    descriptifLong: "Réhabilitation d'un appartement de 105 m² au 5ᵉ étage, au Carlton à Biarritz. Démolition complète intérieure et reconstruction intérieure (lots plâtrerie, isolation, menuiseries extérieures et intérieures, parquets, carrelages, électricité, plomberie, climatisation, peinture, cuisiniste et aménagements intérieurs). Délai de réalisation : 5 mois — livraison début février 2026. Montant des travaux : 330 000 € TTC. Mission : maîtrise d'œuvre, conception et réalisation, et OPC.",
+  },
+  {
+    projet: 'Appartement La Milady', annee: '2024', lieu: 'Biarritz', budget: '140 000 € TTC', duree: '',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: "Réhabilitation d'un appartement de 60 m², chantier réceptionné en juillet 2024.",
+    descriptifLong: "Réhabilitation d'un appartement de 60 m² dénommé « La Milady » à Biarritz. Montant des travaux : 140 000 € TTC. Chantier réceptionné en juillet 2024.",
+  },
+  {
+    projet: 'Appartement Saint-Jean-de-Luz', annee: '2026', lieu: 'Saint-Jean-de-Luz', budget: '140 000 € TTC', duree: '',
+    folder: 'Maisons Individuelles / Commerces / Divers',
+    descriptifCourt: "Réhabilitation d'un appartement de 65 m² : salle de bain, hall d'entrée et salon.",
+    descriptifLong: "Réhabilitation d'un appartement de 65 m² à Saint-Jean-de-Luz : réalisation d'une salle de bain et reprise du hall d'entrée et du salon. Montant des travaux : 140 000 € TTC. Chantier réceptionné en juin 2026.",
+  },
+];
+
+function applyTemplate() {
+  const idx = document.getElementById('meta-template').value;
+  if (idx === '') return;
+  const t = PROJECT_TEMPLATES[Number(idx)];
+  document.getElementById('meta-projet').value = t.projet;
+  document.getElementById('meta-annee').value = t.annee;
+  document.getElementById('meta-lieu').value = t.lieu;
+  document.getElementById('meta-budget').value = t.budget;
+  document.getElementById('meta-duree').value = t.duree;
+  document.getElementById('meta-court').value = t.descriptifCourt;
+  document.getElementById('meta-long').value = t.descriptifLong;
+  const folderSelect = document.getElementById('upload-folder-select');
+  if (t.folder && [...folderSelect.options].some(o => o.value === t.folder)) {
+    folderSelect.value = t.folder;
+  }
+}
+
 /* ── UPLOAD ── */
 function handleAddClick() {
   const sel = document.getElementById('upload-folder-select');
   sel.innerHTML = `<option value="">Sans dossier</option>` + folders.map(f => `<option value="${f}">${f}</option>`).join('');
   if (curFolder !== '__all__' && curFolder !== '__none__') sel.value = curFolder;
+
+  const tplSel = document.getElementById('meta-template');
+  tplSel.innerHTML = '<option value="">— Choisir un projet déjà cadré, ou saisir manuellement —</option>' +
+    PROJECT_TEMPLATES.map((t, i) => `<option value="${i}">${t.projet}</option>`).join('');
+
   document.getElementById('upload-pwd').value = '';
   document.getElementById('upload-error').classList.remove('g-visible');
+  document.getElementById('meta-template').value = '';
   ['meta-projet', 'meta-annee', 'meta-budget', 'meta-lieu', 'meta-duree', 'meta-court', 'meta-long']
     .forEach(id => { document.getElementById(id).value = ''; });
   showModal('modal-upload');
@@ -302,6 +470,10 @@ function checkUploadPwd() {
 }
 
 function openUpload(targetFolder, meta) {
+  if (typeof cloudinary === 'undefined') {
+    showToast("Le module d'envoi Cloudinary n'a pas pu se charger — vérifie ta connexion, désactive un éventuel bloqueur de publicités, ou ouvre le site via son adresse en ligne plutôt qu'en double-cliquant le fichier.");
+    return;
+  }
   let newItems = 0;
   const widget = cloudinary.createUploadWidget({
     cloudName: CONFIG.cloudName, uploadPreset: CONFIG.uploadPreset,
@@ -351,7 +523,7 @@ async function saveMedia(item) {
 
 /* ── EDIT META (mode admin, depuis la visionneuse) ── */
 function openEditMeta() {
-  const item = filtered[curIndex];
+  const item = detailItems[curIndex];
   if (!item) return;
   document.getElementById('edit-meta-id').value = item._id || item.url;
   document.getElementById('edit-projet').value = item.projet || '';
@@ -383,8 +555,8 @@ async function saveEditMeta() {
     showToast('Légende mise à jour');
     await load();
     if (document.getElementById('g-lightbox').classList.contains('g-open')) {
-      const item = filtered.find(m => (m._id === idOrUrl || m.url === idOrUrl));
-      if (item) { curIndex = filtered.indexOf(item); showLbItem(); }
+      const item = detailItems.find(m => (m._id === idOrUrl || m.url === idOrUrl));
+      if (item) { curIndex = detailItems.indexOf(item); showLbItem(); }
     }
   } catch (e) {
     showToast('Erreur : ' + e.message);
@@ -399,7 +571,7 @@ function confirmDeleteSelected() {
   showModal('modal-confirm-delete');
 }
 function confirmDeleteFromLightbox() {
-  const item = filtered[curIndex];
+  const item = detailItems[curIndex];
   if (!item) return;
   deleteTarget = { url: item.url };
   document.getElementById('delete-confirm-text').textContent = 'Supprimer ce média ?';
@@ -421,7 +593,7 @@ async function executeDelete() {
       rec.folders = (rec.folders || []).filter(f => f !== fname);
       rec.media = (rec.media || []).map(m => m.folder === fname ? { ...m, folder: null } : m);
       await saveDB(rec);
-      if (curFolder === fname) curFolder = '__all__';
+      if (curFolder === fname) { curFolder = '__all__'; curProject = null; }
       showToast(`Dossier "${fname}" supprimé`);
     } else {
       const urlsToDelete = deleteTarget === 'selected' ? new Set(selected) : new Set([deleteTarget.url]);
@@ -448,16 +620,23 @@ function showNewFolderModal() {
 }
 
 async function createFolder() {
-  const name = document.getElementById('new-folder-name').value.trim();
-  if (!name) return;
-  if (folders.includes(name)) { document.getElementById('folder-error').classList.add('g-visible'); return; }
+  const raw = document.getElementById('new-folder-name').value.trim();
+  if (!raw) return;
+  // Accepte plusieurs noms séparés par des virgules ou des retours à la ligne,
+  // pour créer plusieurs dossiers en une seule fois.
+  const names = raw.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+  const newOnes = names.filter(n => !folders.includes(n));
+  const already = names.filter(n => folders.includes(n));
+  if (newOnes.length === 0) { document.getElementById('folder-error').classList.add('g-visible'); return; }
   try {
     const rec = await fetchDB();
     rec.folders = rec.folders || [];
-    rec.folders.push(name);
+    rec.folders.push(...newOnes);
     await saveDB(rec);
     hideModal('modal-new-folder');
-    showToast(`Dossier "${name}" créé`);
+    showToast(newOnes.length > 1
+      ? `${newOnes.length} dossiers créés${already.length ? ` (${already.length} existaient déjà)` : ''}`
+      : `Dossier "${newOnes[0]}" créé`);
     await load();
   } catch (e) {
     showToast('Erreur : ' + e.message);
@@ -496,9 +675,9 @@ function openLb(i) {
   document.body.style.overflow = 'hidden';
 }
 function showLbItem() {
-  const item = filtered[curIndex];
+  const item = detailItems[curIndex];
   const wrap = document.getElementById('g-lb-wrap');
-  document.getElementById('g-lb-counter').textContent = `${curIndex + 1} / ${filtered.length}`;
+  document.getElementById('g-lb-counter').textContent = `${curIndex + 1} / ${detailItems.length}`;
 
   const fields = [
     ['Projet', item.projet], ['Année', item.annee], ['Lieu', item.lieu],
@@ -521,7 +700,7 @@ function showLbItem() {
 }
 function navigate(dir) {
   stopMedia();
-  curIndex = (curIndex + dir + filtered.length) % filtered.length;
+  curIndex = (curIndex + dir + detailItems.length) % detailItems.length;
   showLbItem();
 }
 function closeLb() {
