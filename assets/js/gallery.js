@@ -192,6 +192,7 @@ function render() {
 
 function renderProjectTiles() {
   const grid = document.getElementById('gallery');
+  grid.className = 'g-grid g-tiles-mode';
   if (!filtered.length) {
     grid.innerHTML = `<div class="g-empty">
       ${curFolder === '__all__' && curFilter === 'all'
@@ -217,7 +218,13 @@ function renderProjectTiles() {
         })()
       : `<img src="${cover.url.replace('/image/upload/', '/image/upload/w_600,h_450,c_fill/')}" loading="lazy" alt="${title}">`;
 
-    const metaLine = [cover.annee, cover.lieu].filter(Boolean).join(' · ');
+    const fields = [
+      ['Année', cover.annee], ['Lieu', cover.lieu],
+      ['Budget', cover.budget], ['Durée', cover.duree],
+    ].filter(([, v]) => v);
+    const fieldsHtml = fields.length
+      ? `<div class="g-cap-fields">${fields.map(([k, v]) => `<div class="g-cap-field"><span class="g-cap-field-k">${k}</span><span class="g-cap-field-v">${v}</span></div>`).join('')}</div>`
+      : '';
 
     return `<div class="g-project-tile" onclick="openProject(${i})">
       <div class="g-item-media">
@@ -227,8 +234,8 @@ function renderProjectTiles() {
       </div>
       <div class="g-item-caption">
         <div class="g-cap-title">${title}</div>
-        ${metaLine ? `<div class="g-cap-meta">${metaLine}</div>` : ''}
-        ${cover.descriptifLong ? `<div class="g-cap-desc">${truncate(cover.descriptifLong, 220)}</div>` : ''}
+        ${fieldsHtml}
+        ${cover.descriptifLong ? `<div class="g-cap-desc-full">${cover.descriptifLong}</div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -251,6 +258,7 @@ function closeProject() {
 
 function renderProjectDetail() {
   const grid = document.getElementById('gallery');
+  grid.className = 'g-grid';
   detailItems = filtered.filter(item => projectKey(item) === curProject);
 
   if (!detailItems.length) {
