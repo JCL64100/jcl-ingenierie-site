@@ -716,19 +716,6 @@ function showLbItem() {
   const wrap = document.getElementById('g-lb-wrap');
   document.getElementById('g-lb-counter').textContent = `${curIndex + 1} / ${detailItems.length}`;
 
-  const fields = [
-    ['Projet', item.projet], ['Année', item.annee], ['Lieu', item.lieu],
-    ['Budget', item.budget], ['Durée', item.duree],
-  ].filter(([, v]) => v);
-  document.getElementById('g-lb-fields').innerHTML = fields
-    .map(([k, v]) => `<div class="g-lb-field"><span class="g-lb-field-k">${k}</span><span class="g-lb-field-v">${v}</span></div>`)
-    .join('');
-  document.getElementById('g-lb-desc').textContent = item.descriptifLong || '';
-  document.getElementById('g-lb-desc').style.display = item.descriptifLong ? '' : 'none';
-
-  const badge = document.getElementById('g-lb-folder-badge');
-  if (item.folder) { badge.textContent = item.folder; badge.style.display = ''; }
-  else { badge.style.display = 'none'; }
   document.getElementById('g-lb-delete-btn').style.display = adminMode ? '' : 'none';
   document.getElementById('g-lb-edit-btn').style.display = adminMode ? '' : 'none';
   const coverBtn = document.getElementById('g-lb-cover-btn');
