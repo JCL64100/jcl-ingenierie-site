@@ -205,7 +205,7 @@ function renderProjectTiles() {
   projectGroups = groupByProject(filtered);
 
   grid.innerHTML = projectGroups.map((g, i) => {
-    const cover = g.items[0];
+    const cover = g.items.find(m => m.isCover) || g.items[0];
     const title = cover.projet || 'Sans titre';
     const count = g.items.length;
     const folderTag = cover.folder && showFolderTag ? `<span class="g-item-folder-tag g-visible">${cover.folder}</span>` : '';
@@ -258,7 +258,7 @@ function closeProject() {
 
 function renderProjectDetail() {
   const grid = document.getElementById('gallery');
-  grid.className = 'g-grid';
+  grid.className = 'g-grid g-detail-mode';
   detailItems = filtered.filter(item => projectKey(item) === curProject);
 
   if (!detailItems.length) {
@@ -280,18 +280,18 @@ function renderProjectDetail() {
 
     const media = item.type === 'video'
       ? (() => {
-          const thumb = item.url.replace('/video/upload/', '/video/upload/so_0,w_500,h_500,c_fill/').replace(/\.[^./?]+(\?.*)?$/, '.jpg');
+          const thumb = item.url.replace('/video/upload/', '/video/upload/so_0,w_900,h_900,c_fill/').replace(/\.[^./?]+(\?.*)?$/, '.jpg');
           return `<img src="${thumb}" loading="lazy" alt="Vidéo" onerror="this.style.display='none'">
             <div class="g-video-badge">Vidéo</div>`;
         })()
-      : `<img src="${item.url.replace('/image/upload/', '/image/upload/w_500,h_500,c_fill/')}" loading="lazy" alt="${item.projet || 'Photo de chantier'}">`;
+      : `<img src="${item.url.replace('/image/upload/', '/image/upload/w_900,h_900,c_fill/')}" loading="lazy" alt="${item.projet || 'Photo de chantier'}">`;
 
     return `<div class="g-item${selCls}" onclick="handleItemClick(${i})">
       <div class="g-item-media">
         ${media}
-        <div class="g-item-check">${checkMk}</div>
+        <div class="g-item-check" onclick="toggleSelectAt(${i}, event)">${checkMk}</div>
+        ${item.isCover ? `<span class="g-cover-badge">★ Couverture</span>` : ''}
       </div>
-      ${item.descriptifCourt ? `<div class="g-item-caption"><div class="g-cap-desc">${truncate(item.descriptifCourt, 140)}</div></div>` : ''}
     </div>`;
   }).join('');
 
@@ -299,8 +299,12 @@ function renderProjectDetail() {
 }
 
 function handleItemClick(i) {
-  if (adminMode) toggleSelect(detailItems[i].url);
-  else openLb(i);
+  openLb(i);
+}
+
+function toggleSelectAt(i, event) {
+  if (event) event.stopPropagation();
+  toggleSelect(detailItems[i].url);
 }
 
 /* ── SELECTION ── */
@@ -529,6 +533,31 @@ async function saveMedia(item) {
   await saveDB(rec);
 }
 
+/* ── COUVERTURE DE PROJET (mode admin, depuis la visionneuse) ── */
+async function setCoverPhoto() {
+  const item = detailItems[curIndex];
+  if (!item) return;
+  const key = projectKey(item);
+  const idOrUrl = item._id || item.url;
+  try {
+    const rec = await fetchDB();
+    rec.media = (rec.media || []).map(m => {
+      if (projectKey(m) !== key) return m;
+      const isThisOne = (m._id || m.url) === idOrUrl;
+      return { ...m, isCover: isThisOne };
+    });
+    await saveDB(rec);
+    showToast('Photo définie comme couverture du projet');
+    await load();
+    if (document.getElementById('g-lightbox').classList.contains('g-open')) {
+      const refreshed = detailItems.find(m => (m._id || m.url) === idOrUrl);
+      if (refreshed) { curIndex = detailItems.indexOf(refreshed); showLbItem(); }
+    }
+  } catch (e) {
+    showToast('Erreur : ' + e.message);
+  }
+}
+
 /* ── EDIT META (mode admin, depuis la visionneuse) ── */
 function openEditMeta() {
   const item = detailItems[curIndex];
@@ -702,6 +731,12 @@ function showLbItem() {
   else { badge.style.display = 'none'; }
   document.getElementById('g-lb-delete-btn').style.display = adminMode ? '' : 'none';
   document.getElementById('g-lb-edit-btn').style.display = adminMode ? '' : 'none';
+  const coverBtn = document.getElementById('g-lb-cover-btn');
+  if (coverBtn) {
+    coverBtn.style.display = adminMode ? '' : 'none';
+    coverBtn.classList.toggle('is-active', !!item.isCover);
+    coverBtn.title = item.isCover ? 'Photo de couverture actuelle' : 'Définir comme couverture du projet';
+  }
   wrap.innerHTML = item.type === 'video'
     ? `<video src="${item.url}" controls autoplay playsinline></video>`
     : `<img src="${item.url}" alt="${item.projet || 'Photo de chantier'}">`;
