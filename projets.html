@@ -775,6 +775,26 @@ body.g-admin-mode .g-item:not(.g-selected){ opacity:0.85; }
   font-family:var(--mono); font-size:10px; padding:4px 8px; border-radius:3px;
 }
 body.g-admin-mode .g-cover-badge{ display:inline-block; }
+
+.g-reorder-controls{
+  position:absolute; top:8px; right:8px; z-index:2;
+  display:none; flex-direction:column; gap:4px;
+}
+body.g-admin-mode .g-reorder-controls{ display:flex; }
+.g-reorder-controls button{
+  width:26px; height:22px; border:1px solid var(--line-dim); border-radius:var(--radius);
+  background:rgba(30,24,17,0.75); color:var(--white); font-size:11px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.g-reorder-controls button:hover{ border-color:var(--line); color:var(--line); }
+.g-reorder-controls button:disabled{ opacity:0.3; cursor:default; }
+body.g-admin-mode .g-item{ cursor:grab; }
+.g-item.g-dragging{ opacity:0.4; }
+.g-detail-hint{
+  grid-column:1/-1; font-family:var(--mono); font-size:11.5px; color:var(--copper);
+  margin:-8px 0 4px; display:none;
+}
+body.g-admin-mode .g-detail-hint{ display:block; }
 .g-item-caption{ padding:12px 14px 14px; }
 .g-cap-title{ font-family:var(--display); font-size:14.5px; font-weight:600; color:var(--text); line-height:1.3; }
 .g-cap-meta{ font-family:var(--mono); font-size:11px; color:var(--copper); margin-top:3px; letter-spacing:0.02em; }
@@ -1536,10 +1556,72 @@ function closeProject() {
   render();
 }
 
+let dragSrcIndex = null;
+
+function projectItemsOrdered() {
+  const items = filtered.filter(item => projectKey(item) === curProject);
+  const hasOrder = items.some(it => it.order !== undefined);
+  if (hasOrder) {
+    return items.slice().sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  }
+  return items;
+}
+
+async function persistOrder(orderedItems) {
+  const idOf = m => m._id || m.url;
+  const orderMap = {};
+  orderedItems.forEach((m, idx) => { orderMap[idOf(m)] = idx; });
+  try {
+    const rec = await fetchDB();
+    rec.media = (rec.media || []).map(m => {
+      const id = idOf(m);
+      return (id in orderMap) ? { ...m, order: orderMap[id] } : m;
+    });
+    await saveDB(rec);
+    await load();
+  } catch (e) {
+    showToast('Erreur : ' + e.message);
+  }
+}
+
+function moveItem(i, direction) {
+  const j = i + direction;
+  if (j < 0 || j >= detailItems.length) return;
+  const items = [...detailItems];
+  [items[i], items[j]] = [items[j], items[i]];
+  persistOrder(items);
+}
+
+function handleDragStart(i, event) {
+  if (!adminMode) { event.preventDefault(); return; }
+  dragSrcIndex = i;
+  event.dataTransfer.effectAllowed = 'move';
+  event.currentTarget.classList.add('g-dragging');
+}
+function handleDragOver(event) {
+  if (!adminMode) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+function handleDragEnd(event) {
+  document.querySelectorAll('.g-item.g-dragging').forEach(el => el.classList.remove('g-dragging'));
+  dragSrcIndex = null;
+}
+function handleDrop(i, event) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (dragSrcIndex === null || dragSrcIndex === i) return;
+  const items = [...detailItems];
+  const [moved] = items.splice(dragSrcIndex, 1);
+  items.splice(i, 0, moved);
+  dragSrcIndex = null;
+  persistOrder(items);
+}
+
 function renderProjectDetail() {
   const grid = document.getElementById('gallery');
   grid.className = 'g-grid g-detail-mode';
-  detailItems = filtered.filter(item => projectKey(item) === curProject);
+  detailItems = projectItemsOrdered();
 
   if (!detailItems.length) {
     // Le projet a été vidé (ex: suppression de la dernière photo) — retour aux tuiles.
@@ -1551,7 +1633,8 @@ function renderProjectDetail() {
   const header = `<div class="g-detail-header">
       <button class="g-back-btn" onclick="closeProject()">← Tous les projets</button>
       <h3 class="g-detail-title">${title}</h3>
-    </div>`;
+    </div>
+    <p class="g-detail-hint">En mode admin&nbsp;: glissez-déposez une photo pour la réordonner, ou utilisez les flèches ▲▼.</p>`;
 
   const items = detailItems.map((item, i) => {
     const sel = selected.has(item.url);
@@ -1566,11 +1649,18 @@ function renderProjectDetail() {
         })()
       : `<img src="${item.url.replace('/image/upload/', '/image/upload/w_900,h_900,c_fill/')}" loading="lazy" alt="${item.projet || 'Photo de chantier'}">`;
 
-    return `<div class="g-item${selCls}" onclick="handleItemClick(${i})">
+    return `<div class="g-item${selCls}" draggable="${adminMode}"
+        ondragstart="handleDragStart(${i}, event)" ondragover="handleDragOver(event)"
+        ondrop="handleDrop(${i}, event)" ondragend="handleDragEnd(event)"
+        onclick="handleItemClick(${i})">
       <div class="g-item-media">
         ${media}
         <div class="g-item-check" onclick="toggleSelectAt(${i}, event)">${checkMk}</div>
         ${item.isCover ? `<span class="g-cover-badge">★ Couverture</span>` : ''}
+        <div class="g-reorder-controls">
+          <button onclick="event.stopPropagation(); moveItem(${i}, -1)" title="Déplacer vers le haut" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button onclick="event.stopPropagation(); moveItem(${i}, 1)" title="Déplacer vers le bas" ${i === detailItems.length - 1 ? 'disabled' : ''}>▼</button>
+        </div>
       </div>
     </div>`;
   }).join('');

@@ -256,10 +256,72 @@ function closeProject() {
   render();
 }
 
+let dragSrcIndex = null;
+
+function projectItemsOrdered() {
+  const items = filtered.filter(item => projectKey(item) === curProject);
+  const hasOrder = items.some(it => it.order !== undefined);
+  if (hasOrder) {
+    return items.slice().sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+  }
+  return items;
+}
+
+async function persistOrder(orderedItems) {
+  const idOf = m => m._id || m.url;
+  const orderMap = {};
+  orderedItems.forEach((m, idx) => { orderMap[idOf(m)] = idx; });
+  try {
+    const rec = await fetchDB();
+    rec.media = (rec.media || []).map(m => {
+      const id = idOf(m);
+      return (id in orderMap) ? { ...m, order: orderMap[id] } : m;
+    });
+    await saveDB(rec);
+    await load();
+  } catch (e) {
+    showToast('Erreur : ' + e.message);
+  }
+}
+
+function moveItem(i, direction) {
+  const j = i + direction;
+  if (j < 0 || j >= detailItems.length) return;
+  const items = [...detailItems];
+  [items[i], items[j]] = [items[j], items[i]];
+  persistOrder(items);
+}
+
+function handleDragStart(i, event) {
+  if (!adminMode) { event.preventDefault(); return; }
+  dragSrcIndex = i;
+  event.dataTransfer.effectAllowed = 'move';
+  event.currentTarget.classList.add('g-dragging');
+}
+function handleDragOver(event) {
+  if (!adminMode) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+function handleDragEnd(event) {
+  document.querySelectorAll('.g-item.g-dragging').forEach(el => el.classList.remove('g-dragging'));
+  dragSrcIndex = null;
+}
+function handleDrop(i, event) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (dragSrcIndex === null || dragSrcIndex === i) return;
+  const items = [...detailItems];
+  const [moved] = items.splice(dragSrcIndex, 1);
+  items.splice(i, 0, moved);
+  dragSrcIndex = null;
+  persistOrder(items);
+}
+
 function renderProjectDetail() {
   const grid = document.getElementById('gallery');
   grid.className = 'g-grid g-detail-mode';
-  detailItems = filtered.filter(item => projectKey(item) === curProject);
+  detailItems = projectItemsOrdered();
 
   if (!detailItems.length) {
     // Le projet a été vidé (ex: suppression de la dernière photo) — retour aux tuiles.
@@ -271,7 +333,8 @@ function renderProjectDetail() {
   const header = `<div class="g-detail-header">
       <button class="g-back-btn" onclick="closeProject()">← Tous les projets</button>
       <h3 class="g-detail-title">${title}</h3>
-    </div>`;
+    </div>
+    <p class="g-detail-hint">En mode admin&nbsp;: glissez-déposez une photo pour la réordonner, ou utilisez les flèches ▲▼.</p>`;
 
   const items = detailItems.map((item, i) => {
     const sel = selected.has(item.url);
@@ -286,11 +349,18 @@ function renderProjectDetail() {
         })()
       : `<img src="${item.url.replace('/image/upload/', '/image/upload/w_900,h_900,c_fill/')}" loading="lazy" alt="${item.projet || 'Photo de chantier'}">`;
 
-    return `<div class="g-item${selCls}" onclick="handleItemClick(${i})">
+    return `<div class="g-item${selCls}" draggable="${adminMode}"
+        ondragstart="handleDragStart(${i}, event)" ondragover="handleDragOver(event)"
+        ondrop="handleDrop(${i}, event)" ondragend="handleDragEnd(event)"
+        onclick="handleItemClick(${i})">
       <div class="g-item-media">
         ${media}
         <div class="g-item-check" onclick="toggleSelectAt(${i}, event)">${checkMk}</div>
         ${item.isCover ? `<span class="g-cover-badge">★ Couverture</span>` : ''}
+        <div class="g-reorder-controls">
+          <button onclick="event.stopPropagation(); moveItem(${i}, -1)" title="Déplacer vers le haut" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button onclick="event.stopPropagation(); moveItem(${i}, 1)" title="Déplacer vers le bas" ${i === detailItems.length - 1 ? 'disabled' : ''}>▼</button>
+        </div>
       </div>
     </div>`;
   }).join('');
