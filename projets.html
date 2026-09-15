@@ -1856,7 +1856,7 @@ function openUpload(targetFolder, meta) {
     showToast("Le module d'envoi Cloudinary n'a pas pu se charger — vérifie ta connexion, désactive un éventuel bloqueur de publicités, ou ouvre le site via son adresse en ligne plutôt qu'en double-cliquant le fichier.");
     return;
   }
-  let newItems = 0;
+  const pending = [];
   const widget = cloudinary.createUploadWidget({
     cloudName: CONFIG.cloudName, uploadPreset: CONFIG.uploadPreset,
     sources: ['local', 'camera'],
@@ -1873,33 +1873,38 @@ function openUpload(targetFolder, meta) {
   }, async (err, result) => {
     if (err) { showToast('Erreur Cloudinary : ' + (err.statusText || err.message || 'échec de l\'envoi')); return; }
     if (result.event === 'success') {
+      // On accumule localement — l'écriture dans la base se fait une seule fois,
+      // à la toute fin, pour éviter que deux photos terminées en même temps
+      // n'écrasent la fiche l'une de l'autre (chacune ferait sinon sa propre
+      // lecture-puis-écriture de la base, et la plus tardive effacerait la première).
       const info = result.info;
-      try {
-        await saveMedia({
-          url: info.secure_url, type: info.resource_type === 'video' ? 'video' : 'image',
-          date: new Date().toISOString(), public_id: info.public_id,
-          folder: targetFolder || null,
-          _id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
-          ...meta,
-        });
-        newItems++;
-      } catch (e) {
-        showToast('Photo envoyée mais non enregistrée : ' + e.message);
-      }
+      pending.push({
+        url: info.secure_url, type: info.resource_type === 'video' ? 'video' : 'image',
+        date: new Date().toISOString(), public_id: info.public_id,
+        folder: targetFolder || null,
+        _id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+        ...meta,
+      });
     }
-    if (result.event === 'queues-end' && newItems > 0) {
-      showToast(`${newItems} média${newItems > 1 ? 's' : ''} ajouté${newItems > 1 ? 's' : ''}`);
-      await load();
-      newItems = 0;
+    if (result.event === 'queues-end' && pending.length > 0) {
+      const count = pending.length;
+      try {
+        await saveMediaBatch(pending);
+        showToast(`${count} média${count > 1 ? 's' : ''} ajouté${count > 1 ? 's' : ''}`);
+        await load();
+      } catch (e) {
+        showToast(`Erreur d'enregistrement (${count} photo${count > 1 ? 's' : ''} envoyée${count > 1 ? 's' : ''} mais non sauvegardée${count > 1 ? 's' : ''}) : ` + e.message);
+      }
+      pending.length = 0;
     }
   });
   widget.open();
 }
 
-async function saveMedia(item) {
+async function saveMediaBatch(items) {
   const rec = await fetchDB();
   rec.media = rec.media || [];
-  rec.media.push(item);
+  rec.media.push(...items);
   await saveDB(rec);
 }
 
