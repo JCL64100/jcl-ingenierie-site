@@ -492,10 +492,33 @@ const PROJECT_TEMPLATES = [
   },
 ];
 
+function getProjectOptions() {
+  // Projets réellement présents dans la galerie (source la plus fiable, toujours à jour) —
+  // on prend les infos du premier média trouvé pour chaque nom de projet.
+  const seen = new Map();
+  allMedia.forEach(item => {
+    const name = (item.projet || '').trim();
+    if (!name || seen.has(name)) return;
+    seen.set(name, {
+      projet: name, annee: item.annee || '', lieu: item.lieu || '',
+      budget: item.budget || '', duree: item.duree || '',
+      descriptifCourt: item.descriptifCourt || '', descriptifLong: item.descriptifLong || '',
+      folder: item.folder || '',
+    });
+  });
+  const existing = [...seen.values()];
+  const existingNames = new Set(existing.map(p => p.projet));
+  // On complète avec les modèles de départ, seulement pour ceux qui n'existent pas encore réellement.
+  const remainingTemplates = PROJECT_TEMPLATES.filter(t => !existingNames.has(t.projet));
+  return [...existing, ...remainingTemplates];
+}
+
 function applyTemplate() {
   const idx = document.getElementById('meta-template').value;
   if (idx === '') return;
-  const t = PROJECT_TEMPLATES[Number(idx)];
+  const options = getProjectOptions();
+  const t = options[Number(idx)];
+  if (!t) return;
   document.getElementById('meta-projet').value = t.projet;
   document.getElementById('meta-annee').value = t.annee;
   document.getElementById('meta-lieu').value = t.lieu;
@@ -515,9 +538,10 @@ function handleAddClick() {
   sel.innerHTML = `<option value="">Sans dossier</option>` + folders.map(f => `<option value="${f}">${f}</option>`).join('');
   if (curFolder !== '__all__' && curFolder !== '__none__') sel.value = curFolder;
 
+  const options = getProjectOptions();
   const tplSel = document.getElementById('meta-template');
-  tplSel.innerHTML = '<option value="">— Choisir un projet déjà cadré, ou saisir manuellement —</option>' +
-    PROJECT_TEMPLATES.map((t, i) => `<option value="${i}">${t.projet}</option>`).join('');
+  tplSel.innerHTML = '<option value="">— Choisir un projet déjà existant, ou saisir un nouveau —</option>' +
+    options.map((t, i) => `<option value="${i}">${t.projet}</option>`).join('');
 
   document.getElementById('upload-pwd').value = '';
   document.getElementById('upload-error').classList.remove('g-visible');
